@@ -142,7 +142,7 @@ On Gaussian (Normal) distribution, we can find the model parameter from Maximum 
 
 - Naive Bayes:
 
-$`P(X|y)=\prod_{d=1}^{D}P(x_{d}|y)P(y)`$
+$`P(X|y)=\prod_{d=1}^{D}P(x_{d}|y)`$
 
 - Gaussian (Normal) distribution:
 
@@ -215,3 +215,80 @@ for i in range(col):
 ```
 
 <img src="https://github.com/jaja7749/Bayes_Classifier/blob/main/images/Gaussian%20Naive%20Bayes%20result.png" width="720">
+
+# (Multivariate) Gaussian Bayes (Quadratic Discriminant Analysis, QDA) on Different Distribution Data
+
+Dataset is same as Gaussian Naive Bayes.
+
+On Multivariate Gaussian (Normal) distribution, we can find the model parameter from Maximum Likehood Estimation (MLE).
+
+- Bayes (without Naive Assumption):
+
+$`P(x|y)`$
+
+- Gaussian (Normal) distribution:
+
+$`P(x|y)={\displaystyle (2\pi )^{-k/2}\det({\boldsymbol {\Sigma }})^{-1/2}e^{ \left(-{\frac {1}{2}}(\mathbf {x} -{\boldsymbol {\mu }})^{\mathrm {T} }{\boldsymbol {\Sigma }}^{-1}(\mathbf {x} -{\boldsymbol {\mu }})\right)}}`$
+
+- Maximum Likehood Estimation (MLE):
+
+1. Average: $`\frac{\partial\ln L}{\partial\mu}=0\ \Rightarrow \ \mu=\frac{1}{N}\sum_{i=1}^{N}x^{(i)}`$
+2. Covariance: $`\frac{\partial\ln L}{\partial\Sigma}=0\ \Rightarrow \ \Sigma=\frac{1}{N}\sum_{i=1}^{N}(x^{(i)}-\mu)(x^{(i)}-\mu)^{T}`$
+
+First of all, we create a class to input $`X`$ and $`y(label)`$:
+```ruby
+class MGB:
+    def __init__(self, X, y):
+        self.X = np.array(X)
+        self.y = np.array(y)
+        self.label, self.p_y = np.unique(y, return_counts=True)
+        self.p_y =  self.p_y.astype(float) / np.sum(self.p_y)
+        self.avg = np.zeros((len(self.label), len(self.X.T)))
+        self.cov = np.zeros((len(self.label), len(self.X.T), len(self.X.T)))
+```
+
+Train the data, we need to calculate $`Average`$ and $`Covariance`$ to model:
+```ruby
+    def train(self):
+        for i in range(len(self.label)):
+            for j in range(len(self.X.T)):
+                self.avg[i][j] = np.average(self.X[:,j][self.y==self.label[i]]) #µ
+                self.cov[i] = np.cov(self.X[self.y==self.label[i]].T) #Σ
+```
+
+After we have $`Average`$ and $`Covariance`$, the model can classified data:
+```ruby
+    def probability(self, x, avg, cov):
+        return (1/np.power(2*np.pi, len(self.label)/2))*(1/np.power(np.linalg.det(cov), 1/2))*np.exp((-1/2)*np.dot(np.dot((x-avg).T, np.linalg.inv(cov)), (x-avg)))
+        
+    def pred(self, x):
+        y_pred = np.array([])
+        for d in range(1 if x.ndim == 1 else len(x)):
+            p_X_y = np.ones(len(self.label))
+            p_y_X = np.ones(len(self.label))
+            for i in range(len(self.label)):
+                p_X_y[i] = self.probability(x if x.ndim == 1 else x[d], self.avg[i], self.cov[i])
+            p_X = np.sum(p_X_y*self.p_y)
+            p_y_X = p_X_y*self.p_y/p_X
+            y_pred = np.append(y_pred, self.label[np.argmax(p_y_X)])
+        return y_pred
+```
+
+Now, let's try to vaild the dataset:
+```ruby
+col = 2
+row = int(len(datasets)/col)
+plt.subplots(row, col, figsize=(12, 24))
+for i in range(col):
+    for j in range(row):
+        X = datasets[row*i+j][0]
+        y = datasets[row*i+j][1]
+        
+        plt.subplot(row, col, row*i+j+1)
+        model = MGB(X, y)
+        model.train()
+        plt.title(f"Accuracy: {model.valid()*100:.3f} %")
+        model.plot()
+```
+
+<img src="https://github.com/jaja7749/Bayes_Classifier/blob/main/images/Gaussian%20Bayes%20result.png" width="720">
