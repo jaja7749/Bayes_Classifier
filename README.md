@@ -138,4 +138,80 @@ datasets = [
 ```
 <img src="https://github.com/jaja7749/Bayes_Classifier/blob/main/images/different%20distribution.png" width="720">
 
-On Gaussian (Normal) distribution we can find the model parameter from Maximum Likehood Estimation (MLE):
+On Gaussian (Normal) distribution, we can find the model parameter from Maximum Likehood Estimation (MLE).
+
+- Naive Bayes:
+
+$`P(X|y)=\prod_{d=1}^{D}P(x_{d}|y)P(y)`$
+
+- Gaussian (Normal) distribution:
+
+$`P(x_d|y)=\frac{1}{\sigma \sqrt{2\pi }}e^{-\frac{1}{2}(\frac{x-\mu }{\sigma })^{2}}`$
+
+- Maximum Likehood Estimation (MLE):
+
+$`L(x^{(i)})=\prod_{i=1}^{N}\frac{1}{\sigma\sqrt{2\pi}}e^{-\frac{1}{2}(\frac{x^{(i)}-\mu}{\sigma})^{2}}\left [ \left | y^{(i)}=k \right | \right ]`$
+
+$`\Rightarrow \ln L(x^{(i)})=\sum_{i=1}^{N}(-\ln \sigma-\frac{1}{2}(\frac{x^{(i)}-\mu}{\sigma^{2}})^{2}+\ln\frac{1}{\sqrt{2\pi}})\left [ \left | y^{(i)}=k \right | \right ]`$
+
+1. Average: $`\frac{\partial\ln L}{\partial\mu}=0\ \Rightarrow \ \mu=\frac{1}{N}\sum_{i=1}^{N}x^{(i)}`$
+2. Variance: $`\frac{\partial\ln L}{\partial\sigma}=0\ \Rightarrow \ \sigma^{2}=\frac{1}{N}\sum_{i=1}^{N}(x^{(i)}-\mu)^{2}`$
+
+First of all, we create a class to input $`X`$ and $`y(label)`$:
+```ruby
+class GNB:
+    def __init__(self, X, y):
+        self.X = np.array(X)
+        self.y = np.array(y)
+        self.label, self.p_y = np.unique(y, return_counts=True)
+        self.p_y =  self.p_y.astype(float) / np.sum(self.p_y)
+        self.avg = np.zeros((len(self.X.T), len(self.label)))
+        self.var = np.zeros((len(self.X.T), len(self.label)))
+```
+
+Train the data, we need to calculate $`Average`$ and $`Variance`$ to model:
+```ruby
+    def train(self):
+        for i in range(len(self.X.T)):
+            for j in range(len(self.label)):
+                self.avg[i][j] = np.average(self.X[:,i][self.y==self.label[j]]) #µ
+                self.var[i][j] = np.var(self.X[:,i][self.y==self.label[j]]) #σ^2
+```
+
+After we have $`Average`$ and $`Variance`$, the model can classified data:
+```ruby
+    def probability(self, x, avg, var):
+        return (1/np.sqrt(2*np.pi*var))*np.exp(-0.5*np.power(x-avg, 2)/var)
+        
+    def pred(self, x):
+        y_pred = np.array([])
+        for d in range(1 if x.ndim == 1 else len(x)):
+            p_X_y = np.ones(len(self.label))
+            p_y_X = np.ones(len(self.label))
+            for i in range(len(self.label)):
+                for j in range(len(self.X.T)):
+                    p_X_y[i] *= self.probability(x[j] if x.ndim == 1 else x[d][j], self.avg[j][i], self.var[j][i])
+            p_X = np.sum(p_X_y*self.p_y)
+            p_y_X = p_X_y*self.p_y/p_X
+            y_pred = np.append(y_pred, self.label[np.argmax(p_y_X)])
+        return y_pred
+```
+
+Now, let's try to vaild the dataset:
+```ruby
+col = 2
+row = int(len(datasets)/col)
+plt.subplots(row, col, figsize=(12, 24))
+for i in range(col):
+    for j in range(row):
+        X = datasets[row*i+j][0]
+        y = datasets[row*i+j][1]
+        
+        plt.subplot(row, col, row*i+j+1)
+        model = GNB(X, y)
+        model.train()
+        plt.title(f"Accuracy: {model.valid()*100:.3f} %")
+        model.plot()
+```
+
+<img src="https://github.com/jaja7749/Bayes_Classifier/blob/main/images/Gaussian%20Naive%20Bayes%20result.png" width="720">
